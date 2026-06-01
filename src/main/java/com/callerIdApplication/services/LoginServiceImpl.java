@@ -55,20 +55,25 @@ public class LoginServiceImpl implements LoginService{
 		}
 		
 		if(existingCustomer.getPassword().equals(dto.getPassword())) {
-			
-			String key= RandomString.make(6);
-			
-			
-			
-			CurrentUserSession currentUserSession = new CurrentUserSession();
-			currentUserSession.setUserId(existingCustomer.getUserId());
-			currentUserSession.setLocalDateTime(LocalDateTime.now());
-			currentUserSession.setUuid(key);
-			
-			sDao.save(currentUserSession);
-
-			return currentUserSession.toString();
-		}
+    
+    String key = RandomString.make(6);
+    
+    // Eliminar sesión anterior si existe (por si acaso)
+    CurrentUserSession existingSession = sDao.findByUserId(existingCustomer.getUserId());
+    if(existingSession != null) {
+        sDao.delete(existingSession);
+    }
+    
+    CurrentUserSession currentUserSession = new CurrentUserSession();
+    currentUserSession.setUserId(existingCustomer.getUserId());
+    currentUserSession.setLocalDateTime(LocalDateTime.now());
+    currentUserSession.setUuid(key);
+    
+    sDao.save(currentUserSession);
+    
+    // Devolver SOLO el UUID (sin el objeto completo)
+    return key;
+	}
 		else
 			throw new LoginException("Please Enter a valid password");
 		
