@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -88,6 +89,52 @@ public class ReportController {
         } catch (Exception e) {
             response.put("error", e.getMessage());
             return ResponseEntity.status(500).body(response);
+        }
+    }
+    
+    // ========== NUEVO ENDPOINT PARA MARCAR NÚMEROS COMO SEGUROS ==========
+    
+    @GetMapping("/set-safe/{phoneNumber}")
+    public String setNumberAsSafe(@PathVariable String phoneNumber) {
+        try {
+            List<Report> reports = reportDao.findByPhoneNumber(phoneNumber);
+            if (!reports.isEmpty()) {
+                for (Report report : reports) {
+                    report.setSpammer(false);
+                    reportDao.save(report);
+                }
+                return "✅ Número " + phoneNumber + " marcado como SEGURO (spammer = false)";
+            } else {
+                // Si no existe reporte, crear uno con spammer = false
+                Report newReport = new Report(phoneNumber, "manual", "Marcado como seguro desde admin");
+                newReport.setSpammer(false);
+                reportDao.save(newReport);
+                return "✅ Número " + phoneNumber + " creado y marcado como SEGURO";
+            }
+        } catch (Exception e) {
+            return "❌ Error: " + e.getMessage();
+        }
+    }
+    
+    // Endpoint para marcar como spam
+    @GetMapping("/set-spam/{phoneNumber}")
+    public String setNumberAsSpam(@PathVariable String phoneNumber) {
+        try {
+            List<Report> reports = reportDao.findByPhoneNumber(phoneNumber);
+            if (!reports.isEmpty()) {
+                for (Report report : reports) {
+                    report.setSpammer(true);
+                    reportDao.save(report);
+                }
+                return "🚨 Número " + phoneNumber + " marcado como SPAM (spammer = true)";
+            } else {
+                Report newReport = new Report(phoneNumber, "manual", "Marcado como spam desde admin");
+                newReport.setSpammer(true);
+                reportDao.save(newReport);
+                return "🚨 Número " + phoneNumber + " creado y marcado como SPAM";
+            }
+        } catch (Exception e) {
+            return "❌ Error: " + e.getMessage();
         }
     }
 }
