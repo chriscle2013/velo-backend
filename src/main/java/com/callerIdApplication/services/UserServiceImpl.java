@@ -161,61 +161,64 @@ public class UserServiceImpl implements UserService {
 
 
 	@Override
-	public List<?> searchPersonByNumber(String Number,String key) throws UserException {
-		CurrentUserSession currentUserSession= sessionDao.findByUuid(key);
-		if(currentUserSession==null)
+	public List<?> searchPersonByNumber(String Number, String key) throws UserException {
+		CurrentUserSession currentUserSession = sessionDao.findByUuid(key);
+		if (currentUserSession == null)
 			throw new UserException("Login First");
 
-		Optional<User> existingUserOptional=cDao.findById(currentUserSession.getUserId());
+		Optional<User> existingUserOptional = cDao.findById(currentUserSession.getUserId());
+
+		User user = cDao.findByphoneNumber(Number);
 		
-		User user= cDao.findByphoneNumber(Number);
-		if(user==null)
-		{
-			List<Contact> contacts= contactDao.getAllContactByphoneNumber(Number);
-			List<Spam> result=new ArrayList<>();
-			if(contacts.size()==0)
-			{
-				Spam spam=new Spam();
-				spam.setName("Unknown");
-				spam.setNumber(Number);
-				spam.setSpammer(true);
-				Spam spam2= spamDao.save(spam);
-				 result.add(spam2);
-				 return result;
-			}
+		if (user == null) {
+			// Buscar en contactos
+			List<Contact> contacts = contactDao.getAllContactByphoneNumber(Number);
+			List<Spam> result = new ArrayList<>();
 			
-			List<Spam> spams= spamDao.findBynumber(Number);
-			if(spams.size()==0)
-			{
-				for(Contact c:contacts)
-				{
-					Spam spam=new Spam();
+			if (contacts.size() == 0) {
+				// Número no encontrado en contactos
+				// Buscar en tabla Spam si ya existe un reporte
+				List<Spam> existingSpam = spamDao.findBynumber(Number);
+				
+				if (existingSpam != null && !existingSpam.isEmpty()) {
+					// Usar el reporte existente
+					Spam existing = existingSpam.get(0);
+					result.add(existing);
+				} else {
+					// Crear registro NO SPAM (spammer = false)
+					Spam spam = new Spam();
+					spam.setName("Unknown");
+					spam.setNumber(Number);
+					spam.setSpammer(false);
+					Spam spam2 = spamDao.save(spam);
+					result.add(spam2);
+				}
+				return result;
+			}
+
+			List<Spam> spams = spamDao.findBynumber(Number);
+			if (spams == null || spams.size() == 0) {
+				for (Contact c : contacts) {
+					Spam spam = new Spam();
 					spam.setName(c.getName());
 					spam.setNumber(c.getNumber());
 					spam.setSpammer(false);
 					spams.add(spam);
 				}
-				
 				return spams;
 			}
-				
-			
-			
-			for(Contact c:contacts)
-			{
-				for(Spam s:spams)
-				{
-					if(c.getNumber().equals(s.getNumber()) && c.getName().equals(s.getName()))
-					{
-						Spam spam=new Spam();
+
+			for (Contact c : contacts) {
+				for (Spam s : spams) {
+					if (c.getNumber().equals(s.getNumber()) && c.getName().equals(s.getName())) {
+						Spam spam = new Spam();
 						spam.setSpamID(s.getSpamID());
 						spam.setName(c.getName());
 						spam.setNumber(c.getNumber());
 						spam.setSpammer(true);
 						result.add(spam);
-					}
-					else {
-						Spam spam=new Spam();
+					} else {
+						Spam spam = new Spam();
 						spam.setName(c.getName());
 						spam.setNumber(c.getNumber());
 						spam.setSpammer(false);
@@ -223,46 +226,31 @@ public class UserServiceImpl implements UserService {
 					}
 				}
 			}
-			
-			
-			
-			
 			return result;
 			
-		}
-		else {
-			
-			Optional<Spam> sOptional= spamDao.findById(user.getUserId());
-			
-			if(sOptional.isPresent())
-			{
-				List<Spam> spams=new ArrayList<>();
+		} else {
+			Optional<Spam> sOptional = spamDao.findById(user.getUserId());
+
+			if (sOptional.isPresent()) {
+				List<Spam> spams = new ArrayList<>();
 				spams.add(sOptional.get());
 				return spams;
 			}
-			
-			if(user.getUserId().equals(existingUserOptional.get().getUserId()))
-			{
-				List<String> strings=new ArrayList<>();
-				String gmailString=existingUserOptional.get().getEmail();
+
+			if (user.getUserId().equals(existingUserOptional.get().getUserId())) {
+				List<String> strings = new ArrayList<>();
+				String gmailString = existingUserOptional.get().getEmail();
 				strings.add(gmailString);
 				return strings;
 			}
-			List<Spam> list=new ArrayList<>();
 			
-			Spam spam=new Spam();
+			List<Spam> list = new ArrayList<>();
+			Spam spam = new Spam();
 			spam.setName(user.getUserName());
 			spam.setNumber(user.getPhoneNumber());
 			spam.setSpammer(false);
 			list.add(spam);
 			return list;
 		}
-		
-		
 	}
-
-		
-		
-	}
-
-
+}
