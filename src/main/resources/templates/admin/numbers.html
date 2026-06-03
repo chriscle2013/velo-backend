@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="admin/layout :: head"></head>
+<body>
+    <div th:replace="admin/layout :: sidebar"></div>
+    
+    <div class="col-md-10 p-0">
+        <div class="content">
+            <div class="navbar-top">
+                <h5 class="mb-0">
+                    <i class="fas fa-phone"></i> 
+                    Números Registrados
+                </h5>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">
+                            <i class="fas fa-list"></i> Lista de Usuarios
+                        </h6>
+                        <span class="badge bg-primary" th:text="${#lists.size(users)} + ' usuarios'">0 usuarios</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Número de Teléfono</th>
+                                    <th>Email</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="user : ${users}">
+                                    <td th:text="${user.userId}">1</td>
+                                    <td th:text="${user.userName}">Nombre</td>
+                                    <td>
+                                        <code th:text="${user.phoneNumber}">3001234567</code>
+                                        <i class="fas fa-copy text-muted ms-2" style="cursor: pointer;" 
+                                           th:onclick="'copyToClipboard(\'' + ${user.phoneNumber} + '\')'"></i>
+                                    </td>
+                                    <td th:text="${user.email}">email@ejemplo.com</td>
+                                    <td>
+                                        <span class="badge bg-success">Registrado</span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-warning" 
+                                                th:onclick="'toggleSpam(' + ${user.userId} + ', this)'">
+                                            <i class="fas fa-flag"></i> Marcar Spam
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(users)}">
+                                    <td colspan="6" class="text-center text-muted">
+                                        <i class="fas fa-inbox fa-2x d-block mb-2"></i>
+                                        No hay usuarios registrados aún
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning mt-4">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Nota:</strong>
+                La funcionalidad de "Marcar Spam" está en desarrollo. Próximamente podrás marcar números como spam directamente desde este panel.
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text);
+            alert('Número copiado: ' + text);
+        }
+        
+        function toggleSpam(userId, button) {
+            // Esta funcionalidad se implementará después
+            alert('Funcionalidad en desarrollo. Próximamente podrás marcar/desmarcar spam desde aquí.\n\nUser ID: ' + userId);
+        }
+    </script>
+</body>
+</html>
