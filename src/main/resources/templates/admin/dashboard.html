@@ -2,79 +2,70 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="admin/layout :: head"></head>
 <body>
-    <div th:replace="admin/layout :: sidebar"></div>
+    <div th:replace="admin/layout :: body"></div>
     
-    <div class="col-md-10 p-0">
-        <div class="content">
-            <div class="navbar-top">
-                <h5 class="mb-0">
-                    <i class="fas fa-tachometer-alt"></i> 
-                    Dashboard
-                </h5>
-            </div>
-            
-            <div class="row">
-                <div class="col-md-6 mb-4">
-                    <div class="card text-white bg-primary">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="card-title">Usuarios Registrados</h6>
-                                    <h2 class="display-4" th:text="${totalUsers}">0</h2>
-                                </div>
-                                <i class="fas fa-users fa-3x opacity-50"></i>
+    <div th:fragment="content">
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title">Usuarios Registrados</h6>
+                                <h2 class="display-4" th:text="${totalUsers}">0</h2>
                             </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="col-md-6 mb-4">
-                    <div class="card text-white bg-success">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="card-title">Sesiones Activas</h6>
-                                    <h2 class="display-4" th:text="${activeSessions}">0</h2>
-                                </div>
-                                <i class="fas fa-circle fa-3x opacity-50"></i>
-                            </div>
+                            <i class="fas fa-users fa-3x opacity-50"></i>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div class="card">
-                <div class="card-header bg-white">
-                    <h6 class="mb-0">
-                        <i class="fas fa-info-circle"></i> Información del Sistema
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <table class="table table-borderless">
-                        <tr>
-                            <td width="200"><strong>🌐 API URL:</strong></td>
-                            <td><code>https://callerid-backend-n41w.onrender.com</code></td>
-                        </tr>
-                        <tr>
-                            <td><strong>📱 App Android:</strong></td>
-                            <td>Conectada correctamente</td>
-                        </tr>
-                        <tr>
-                            <td><strong>🗄️ Base de Datos:</strong></td>
-                            <td>PostgreSQL en Render</td>
-                        </tr>
-                        <tr>
-                            <td><strong>🟢 Estado:</strong></td>
-                            <td><span class="badge bg-success">Activo</span></td>
-                        </tr>
-                    </table>
+            <div class="col-md-6 mb-4">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-title">Sesiones Activas</h6>
+                                <h2 class="display-4" th:text="${activeSessions}">0</h2>
+                            </div>
+                            <i class="fas fa-circle fa-3x opacity-50"></i>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-            <div class="alert alert-info mt-4">
-                <i class="fas fa-lightbulb"></i> <strong>Consejo:</strong>
-                Ve a la sección <strong>"Números Registrados"</strong> para ver todos los usuarios y gestionar reportes de spam.
+        </div>
+        
+        <div class="card">
+            <div class="card-header bg-white">
+                <h6 class="mb-0">
+                    <i class="fas fa-info-circle"></i> Información del Sistema
+                </h6>
             </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td width="200"><strong>🌐 API URL:</strong></td>
+                        <td><code>https://callerid-backend-n41w.onrender.com</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>📱 App Android:</strong></td>
+                        <td>Conectada correctamente</td>
+                    </tr>
+                    <tr>
+                        <td><strong>🗄️ Base de Datos:</strong></td>
+                        <td>PostgreSQL en Render</td>
+                    </tr>
+                    <tr>
+                        <td><strong>🟢 Estado:</strong></td>
+                        <td><span class="badge bg-success">Activo</span></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="alert alert-info mt-4">
+            <i class="fas fa-lightbulb"></i> <strong>Consejo:</strong>
+            Ve a la sección <strong>"Números Registrados"</strong> para ver todos los usuarios y gestionar reportes de spam.
         </div>
     </div>
 </body>
