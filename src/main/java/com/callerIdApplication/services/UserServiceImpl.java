@@ -188,13 +188,16 @@ public class UserServiceImpl implements UserService {
                 isSpammer = spamReports.get(0).getSpammer();
             }
             
-            // SEGUNDO: Buscar nombre asignado por la comunidad
-            AssignedName assignedName = assignedNameDao.findTopByPhoneNumberOrderByVoteCountDesc(Number);
+            // SEGUNDO: Buscar nombre asignado por la comunidad (solo si NO es spam)
+            AssignedName assignedName = null;
+            if (!isSpammer) {
+                assignedName = assignedNameDao.findTopByPhoneNumberOrderByVoteCountDesc(Number);
+            }
             
             if (contacts.size() == 0) {
                 Map<String, Object> map = new HashMap<>();
                 
-                // Prioridad: Spam > Nombre asignado > Unknown
+                // SI ES SPAM: mostrar "SPAM" como nombre
                 if (isSpammer) {
                     map.put("name", "SPAM");
                 } else if (assignedName != null) {
@@ -229,17 +232,21 @@ public class UserServiceImpl implements UserService {
             List<Map<String, Object>> result = new ArrayList<>();
             Map<String, Object> map = new HashMap<>();
             
-            // Usuario registrado en la app
-            map.put("name", user.getUserName());
-            map.put("number", user.getPhoneNumber());
-            
             // Verificar si está reportado como SPAM
             List<Spam> spamReports = spamDao.findBynumber(Number);
+            boolean isSpammer = false;
             if (spamReports != null && !spamReports.isEmpty()) {
-                map.put("spammer", spamReports.get(0).getSpammer());
-            } else {
-                map.put("spammer", false);
+                isSpammer = spamReports.get(0).getSpammer();
             }
+            
+            // SI ES SPAM: mostrar "SPAM" como nombre
+            if (isSpammer) {
+                map.put("name", "SPAM");
+            } else {
+                map.put("name", user.getUserName());
+            }
+            map.put("number", user.getPhoneNumber());
+            map.put("spammer", isSpammer);
             result.add(map);
             return result;
         }
