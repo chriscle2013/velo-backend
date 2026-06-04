@@ -20,7 +20,6 @@ public class AdminController {
     @Autowired
     private SessionDao sessionDao;
     
-    // Contraseña de administrador (cámbiala después)
     private static final String ADMIN_PASSWORD = "admin123";
     
     @GetMapping("/login")
@@ -48,7 +47,8 @@ public class AdminController {
         
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("activeSessions", activeSessions);
-        return "admin/dashboard";
+        model.addAttribute("page", "admin/dashboard");
+        return "admin/layout";
     }
     
     @GetMapping("/numbers")
@@ -59,7 +59,8 @@ public class AdminController {
         
         Iterable<User> allUsers = userDao.findAll();
         model.addAttribute("users", allUsers);
-        return "admin/numbers";
+        model.addAttribute("page", "admin/numbers");
+        return "admin/layout";
     }
     
     @GetMapping("/logout")
