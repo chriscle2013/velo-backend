@@ -1,8 +1,6 @@
 package com.callerIdApplication.controller;
 
-import com.callerIdApplication.entity.Report;
 import com.callerIdApplication.entity.User;
-import com.callerIdApplication.repostitory.ReportDao;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,8 +9,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
-import java.util.List;
-import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin")
@@ -24,9 +20,7 @@ public class AdminController {
     @Autowired
     private SessionDao sessionDao;
     
-    @Autowired
-    private ReportDao reportDao;
-    
+    // Contraseña de administrador (cámbiala después)
     private static final String ADMIN_PASSWORD = "admin123";
     
     @GetMapping("/login")
@@ -51,13 +45,10 @@ public class AdminController {
         
         long totalUsers = userDao.count();
         long activeSessions = sessionDao.count();
-        long totalReports = reportDao.count();
         
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("activeSessions", activeSessions);
-        model.addAttribute("totalReports", totalReports);
-        model.addAttribute("page", "admin/dashboard");
-        return "admin/layout";
+        return "admin/dashboard";
     }
     
     @GetMapping("/numbers")
@@ -68,45 +59,7 @@ public class AdminController {
         
         Iterable<User> allUsers = userDao.findAll();
         model.addAttribute("users", allUsers);
-        model.addAttribute("page", "admin/numbers");
-        return "admin/layout";
-    }
-    
-    @GetMapping("/reports")
-    public String listReports(Model model, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return "redirect:/admin/login";
-        }
-        
-        List<Report> allReports = reportDao.findAll();
-        model.addAttribute("reports", allReports);
-        model.addAttribute("page", "admin/reports");
-        return "admin/layout";
-    }
-    
-    @PostMapping("/reports/{id}/toggle-spam")
-    public String toggleSpam(@PathVariable Long id, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) {
-            return "redirect:/admin/login";
-        }
-        
-        try {
-            Optional<Report> reportOpt = reportDao.findById(id);
-            if (reportOpt.isPresent()) {
-                Report report = reportOpt.get();
-                boolean newStatus = !report.isSpammer();
-                report.setSpammer(newStatus);
-                reportDao.save(report);
-                System.out.println("✅ Reporte ID " + id + " cambiado a spammer=" + newStatus);
-            } else {
-                System.out.println("❌ Reporte no encontrado con ID: " + id);
-            }
-        } catch (Exception e) {
-            System.out.println("❌ Error toggling spam: " + e.getMessage());
-            e.printStackTrace();
-        }
-        
-        return "redirect:/admin/reports";
+        return "admin/numbers";
     }
     
     @GetMapping("/logout")
