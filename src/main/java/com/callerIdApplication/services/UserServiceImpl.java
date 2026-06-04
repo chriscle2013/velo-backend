@@ -181,91 +181,47 @@ public class UserServiceImpl implements UserService {
             List<Contact> contacts = contactDao.getAllContactByphoneNumber(Number);
             List<Map<String, Object>> result = new ArrayList<>();
             
-            // Buscar nombre asignado por la comunidad
+            // PRIMERO: Verificar si está reportado como SPAM (prioridad máxima)
+            List<Spam> spamReports = spamDao.findBynumber(Number);
+            boolean isSpammer = false;
+            if (spamReports != null && !spamReports.isEmpty()) {
+                isSpammer = spamReports.get(0).getSpammer();
+            }
+            
+            // SEGUNDO: Buscar nombre asignado por la comunidad
             AssignedName assignedName = assignedNameDao.findTopByPhoneNumberOrderByVoteCountDesc(Number);
             
             if (contacts.size() == 0) {
-                List<Spam> existingSpam = spamDao.findBynumber(Number);
-                if (existingSpam != null && !existingSpam.isEmpty()) {
-                    Map<String, Object> map = new HashMap<>();
-                    if (assignedName != null) {
-                        map.put("name", assignedName.getAssignedName());
-                    } else {
-                        map.put("name", existingSpam.get(0).getName());
-                    }
-                    map.put("number", existingSpam.get(0).getNumber());
-                    map.put("spammer", existingSpam.get(0).getSpammer());
-                    result.add(map);
-                    return result;
-                }
-                
                 Map<String, Object> map = new HashMap<>();
-                if (assignedName != null) {
+                
+                // Prioridad: Spam > Nombre asignado > Unknown
+                if (isSpammer) {
+                    map.put("name", "SPAM");
+                } else if (assignedName != null) {
                     map.put("name", assignedName.getAssignedName());
                 } else {
                     map.put("name", "Unknown");
                 }
                 map.put("number", Number);
-                map.put("spammer", false);
+                map.put("spammer", isSpammer);
                 result.add(map);
-                
-                Spam spam = new Spam();
-                if (assignedName != null) {
-                    spam.setName(assignedName.getAssignedName());
-                } else {
-                    spam.setName("Unknown");
-                }
-                spam.setNumber(Number);
-                spam.setSpammer(false);
-                spamDao.save(spam);
-                
                 return result;
             }
             
-            List<Spam> spams = spamDao.findBynumber(Number);
-            if (spams.size() == 0) {
-                for (Contact c : contacts) {
-                    Map<String, Object> map = new HashMap<>();
-                    if (assignedName != null) {
-                        map.put("name", assignedName.getAssignedName());
-                    } else {
-                        map.put("name", c.getName());
-                    }
-                    map.put("number", c.getNumber());
-                    map.put("spammer", false);
-                    result.add(map);
-                }
-                return result;
-            }
-            
+            // Si hay contactos
             for (Contact c : contacts) {
-                boolean found = false;
-                for (Spam s : spams) {
-                    if (c.getNumber().equals(s.getNumber()) && c.getName().equals(s.getName())) {
-                        Map<String, Object> map = new HashMap<>();
-                        if (assignedName != null) {
-                            map.put("name", assignedName.getAssignedName());
-                        } else {
-                            map.put("name", c.getName());
-                        }
-                        map.put("number", c.getNumber());
-                        map.put("spammer", true);
-                        result.add(map);
-                        found = true;
-                        break;
-                    }
+                Map<String, Object> map = new HashMap<>();
+                
+                if (isSpammer) {
+                    map.put("name", "SPAM");
+                } else if (assignedName != null) {
+                    map.put("name", assignedName.getAssignedName());
+                } else {
+                    map.put("name", c.getName());
                 }
-                if (!found) {
-                    Map<String, Object> map = new HashMap<>();
-                    if (assignedName != null) {
-                        map.put("name", assignedName.getAssignedName());
-                    } else {
-                        map.put("name", c.getName());
-                    }
-                    map.put("number", c.getNumber());
-                    map.put("spammer", false);
-                    result.add(map);
-                }
+                map.put("number", c.getNumber());
+                map.put("spammer", isSpammer);
+                result.add(map);
             }
             return result;
             
@@ -273,18 +229,14 @@ public class UserServiceImpl implements UserService {
             List<Map<String, Object>> result = new ArrayList<>();
             Map<String, Object> map = new HashMap<>();
             
-            // Buscar nombre asignado por la comunidad
-            AssignedName assignedName = assignedNameDao.findTopByPhoneNumberOrderByVoteCountDesc(Number);
-            if (assignedName != null) {
-                map.put("name", assignedName.getAssignedName());
-            } else {
-                map.put("name", user.getUserName());
-            }
+            // Usuario registrado en la app
+            map.put("name", user.getUserName());
             map.put("number", user.getPhoneNumber());
             
-            List<Spam> existingSpam = spamDao.findBynumber(Number);
-            if (existingSpam != null && !existingSpam.isEmpty()) {
-                map.put("spammer", existingSpam.get(0).getSpammer());
+            // Verificar si está reportado como SPAM
+            List<Spam> spamReports = spamDao.findBynumber(Number);
+            if (spamReports != null && !spamReports.isEmpty()) {
+                map.put("spammer", spamReports.get(0).getSpammer());
             } else {
                 map.put("spammer", false);
             }
