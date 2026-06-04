@@ -1,21 +1,18 @@
 package com.callerIdApplication.controller;
 
-import com.callerIdApplication.entity.CurrentUserSession;
 import com.callerIdApplication.entity.Report;
 import com.callerIdApplication.entity.User;
 import com.callerIdApplication.repostitory.ReportDao;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 @Controller
 @RequestMapping("/admin")
@@ -88,34 +85,24 @@ public class AdminController {
     }
     
     @PostMapping("/reports/{id}/toggle-spam")
-    @ResponseBody
-    public ResponseEntity<Map<String, Object>> toggleSpam(@PathVariable Long id, HttpSession session) {
+    public String toggleSpam(@PathVariable Long id, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) {
-            return ResponseEntity.status(401).build();
+            return "redirect:/admin/login";
         }
         
-        Map<String, Object> response = new HashMap<>();
-        
         try {
-            Report report = reportDao.findById(id).orElse(null);
-            if (report != null) {
+            Optional<Report> reportOpt = reportDao.findById(id);
+            if (reportOpt.isPresent()) {
+                Report report = reportOpt.get();
                 boolean newStatus = !report.isSpammer();
                 report.setSpammer(newStatus);
                 reportDao.save(report);
-                
-                response.put("success", true);
-                response.put("newStatus", newStatus);
-                response.put("message", newStatus ? "Número marcado como SPAM" : "Número desmarcado como SPAM");
-            } else {
-                response.put("success", false);
-                response.put("message", "Reporte no encontrado");
             }
         } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Error: " + e.getMessage());
+            System.out.println("Error toggling spam: " + e.getMessage());
         }
         
-        return ResponseEntity.ok(response);
+        return "redirect:/admin/reports";
     }
     
     @GetMapping("/logout")
