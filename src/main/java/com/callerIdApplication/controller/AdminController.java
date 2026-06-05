@@ -8,8 +8,6 @@ import com.callerIdApplication.repostitory.UserDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpSession;
@@ -85,48 +83,50 @@ public class AdminController {
         model.addAttribute("page", "admin/reports");
         return "admin/layout";
     }
-
+    
+    @PostMapping("/reports/{id}/toggle-spam")
+    public String toggleSpam(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) {
+            return "redirect:/admin/login";
+        }
+        
+        try {
+            Optional<Report> reportOpt = reportDao.findById(id);
+            if (reportOpt.isPresent()) {
+                Report report = reportOpt.get();
+                boolean newStatus = !report.isSpammer();
+                report.setSpammer(newStatus);
+                reportDao.save(report);
+            }
+        } catch (Exception e) {
+            System.out.println("Error toggling spam: " + e.getMessage());
+        }
+        
+        return "redirect:/admin/reports";
+    }
+    
+    // ========== NUEVO ENDPOINT PARA ASIGNAR UUID FIJO ==========
     @GetMapping("/fix-uuid/{phoneNumber}")
     @ResponseBody
     public String fixUuid(@PathVariable String phoneNumber) {
-    try {
-        User user = cDao.findByphoneNumber(phoneNumber);
-        if (user != null) {
-            if (user.getUuid() == null || user.getUuid().isEmpty()) {
-                String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
-                user.setUuid(newUuid);
-                cDao.save(user);
-                return "✅ UUID asignado: " + newUuid + " para " + phoneNumber;
-            } else {
-                return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
+        try {
+            User user = userDao.findByphoneNumber(phoneNumber);
+            if (user != null) {
+                if (user.getUuid() == null || user.getUuid().isEmpty()) {
+                    String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
+                    user.setUuid(newUuid);
+                    userDao.save(user);
+                    return "✅ UUID asignado: " + newUuid + " para el número " + phoneNumber;
+                } else {
+                    return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
+                }
             }
+            return "❌ Usuario no encontrado con número: " + phoneNumber;
+        } catch (Exception e) {
+            return "❌ Error: " + e.getMessage();
         }
-        return "❌ Usuario no encontrado";
-    } catch (Exception e) {
-        return "❌ Error: " + e.getMessage();
     }
-}
-    @PostMapping("/reports/{id}/toggle-spam")
-public String toggleSpam(@PathVariable Long id, HttpSession session) {
-    // Verificar sesión de admin
-    if (session.getAttribute("admin_logged") == null) {
-        return "redirect:/admin/login";
-    }
-    
-    try {
-        java.util.Optional<Report> reportOpt = reportDao.findById(id);
-        if (reportOpt.isPresent()) {
-            Report report = reportOpt.get();
-            boolean newStatus = !report.isSpammer();
-            report.setSpammer(newStatus);
-            reportDao.save(report);
-        }
-    } catch (Exception e) {
-        System.out.println("Error toggling spam: " + e.getMessage());
-    }
-    
-    return "redirect:/admin/reports";
-}
+    // ========== FIN DEL ENDPOINT ==========
     
     @GetMapping("/logout")
     public String logout(HttpSession session) {
