@@ -13,8 +13,6 @@ import com.callerIdApplication.exceptions.LoginException;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
 
-import net.bytebuddy.utility.RandomString;
-
 @Service
 public class LoginServiceImpl implements LoginService {
 
@@ -37,12 +35,13 @@ public class LoginServiceImpl implements LoginService {
             throw new LoginException("Please Enter a valid password");
         }
         
-        // USAR EL UUID EXISTENTE DEL USUARIO - NO GENERAR UNO NUEVO
+        // ⭐ REUTILIZAR EL UUID EXISTENTE - NUNCA GENERAR UNO NUEVO
         String uuid = existingCustomer.getUuid();
         
-        // Si el usuario no tiene UUID (usuarios antiguos), generar uno
+        // Si por alguna razón no tiene UUID (usuario antiguo), se asigna uno
         if (uuid == null || uuid.isEmpty()) {
-            uuid = RandomString.make(6);
+            // Esto solo debería pasar con usuarios creados antes de implementar esta funcionalidad
+            uuid = java.util.UUID.randomUUID().toString().substring(0, 8);
             existingCustomer.setUuid(uuid);
             cDao.save(existingCustomer);
         }
@@ -53,7 +52,7 @@ public class LoginServiceImpl implements LoginService {
             sDao.delete(existingSession);
         }
         
-        // Crear nueva sesión
+        // Crear nueva sesión con el mismo UUID
         CurrentUserSession currentUserSession = new CurrentUserSession();
         currentUserSession.setUserId(existingCustomer.getUserId());
         currentUserSession.setLocalDateTime(LocalDateTime.now());
