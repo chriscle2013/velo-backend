@@ -42,21 +42,21 @@ public class UserServiceImpl implements UserService {
     private AssignedNameDao assignedNameDao;
     
     @Override
-    public String createCustomer(User customer) throws UserException {
-        
-        User existingCustomer = cDao.findByphoneNumber(customer.getPhoneNumber());
-        
-        if (existingCustomer != null) 
-            throw new UserException("Customer Already Registered with Mobile number");
-        
-        // Generar UUID único para el usuario (NO cambia con reinstalaciones)
-        String uniqueUuid = RandomString.make(8);
-        customer.setUuid(uniqueUuid);
-        
-        cDao.save(customer);
-        
-        return "User Registration Success";
-    }
+public String createCustomer(User customer) throws UserException {
+    
+    User existingCustomer = cDao.findByphoneNumber(customer.getPhoneNumber());
+    
+    if (existingCustomer != null) 
+        throw new UserException("Customer Already Registered with Mobile number");
+    
+    // ⭐ GENERAR UUID UNA SOLA VEZ - EN EL REGISTRO
+    String uniqueUuid = RandomString.make(8);
+    customer.setUuid(uniqueUuid);
+    
+    cDao.save(customer);
+    
+    return "User Registration Success. Your UUID: " + uniqueUuid;
+}
 
     @Override
     public List<Contact> addContact(Contact contact, String key) throws UserException {
