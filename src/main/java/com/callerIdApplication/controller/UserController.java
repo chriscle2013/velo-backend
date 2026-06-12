@@ -47,10 +47,9 @@ public class UserController {
         List<Map<String, Object>> responseList = new ArrayList<>();
         Map<String, Object> responseMap = new HashMap<>();
         
-        // 1. Conservar el número original enviado por la App
         String originalNumber = number;
         
-        // 2. Crear la variante limpia sin caracteres especiales ni el prefijo 57
+        // 1. Crear variante limpia del número telefónico para la búsqueda estandarizada
         String cleanNumber = number.replaceAll("[^0-9]", "");
         if (cleanNumber.length() == 12 && cleanNumber.startsWith("57")) {
             cleanNumber = cleanNumber.substring(2);
@@ -60,34 +59,33 @@ public class UserController {
         String resolvedName = "Unknown";
         
         try {
-            // CRITERIO A: Intentar buscar en la tabla de Usuarios para ver si tiene un nombre asignado
+            // CRITERIO A: Buscar coincidencia en la tabla de Usuarios utilizando UserDao
             User foundUser = userDao.findByphoneNumber(cleanNumber);
             if (foundUser == null && !cleanNumber.equals(originalNumber)) {
                 foundUser = userDao.findByphoneNumber(originalNumber);
             }
             
             if (foundUser != null) {
-                // Si encuentras el usuario, asignamos su nombre de cuenta
                 resolvedName = "Usuario Registrado";
             }
 
-            // CRITERIO B: Comprobación estricta y nativa en la tabla de Spam (SpamDao)
-            // Primero buscamos con el formato de número limpio
+            // CRITERIO B: Comprobación nativa sobre la tabla de Spam (SpamDao)
             List<Spam> spamList = spamDao.findBynumber(cleanNumber);
             
-            // Si no lo encuentra, buscamos con el formato original (con o sin 57) para asegurar la sincronización
             if ((spamList == null || spamList.isEmpty()) && !cleanNumber.equals(originalNumber)) {
                 spamList = spamDao.findBynumber(originalNumber);
             }
             
-            // Si el número existe dentro de la tabla de Spams, extraemos su estado real sin métodos dinámicos
             if (spamList != null && !spamList.isEmpty()) {
                 Spam spamRecord = spamList.get(0);
                 if (spamRecord != null) {
-                    // LLAMADO NATIVO DIRECTO: Leemos la propiedad exacta de tu entidad
-                    isSpammer = spamRecord.isSpammer(); 
+                    // Llamado al método nativo correcto autogenerado para el wrapper Boolean en tu entidad Spam
+                    Boolean dbSpammerStatus = spamRecord.getSpammer();
+                    if (dbSpammerStatus != null) {
+                        isSpammer = dbSpammerStatus;
+                    }
                     
-                    // Si está marcado como Spam activo en la DB, le ponemos su nombre correspondiente
+                    // Asignamos el nombre registrado si se encuentra marcado como Spam activo
                     if (isSpammer) {
                         resolvedName = (spamRecord.getName() != null) ? spamRecord.getName() : "SPAM";
                     }
@@ -100,7 +98,6 @@ public class UserController {
                 resolvedName = "Número de Prueba Seguro";
             }
             
-            // Construcción del JSON de respuesta idéntico a lo que espera tu app nativa de Android
             responseMap.put("number", cleanNumber);
             responseMap.put("spammer", isSpammer);
             responseMap.put("name", resolvedName);
@@ -109,7 +106,6 @@ public class UserController {
             return ResponseEntity.ok(responseList);
             
         } catch (Exception e) {
-            // Plan de contingencia ante caídas o excepciones de base de datos
             if ("3166009819".equals(cleanNumber)) {
                 responseMap.put("number", cleanNumber);
                 responseMap.put("spammer", false);
