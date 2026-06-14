@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID; // Aseguramos la importación para el identificador único
 
 @RestController
 @CrossOrigin(origins = "*")
@@ -27,6 +28,11 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
+            // 🚀 SOLUCIÓN AUTOMÁTICA: Si la app no envía un UUID (o llega vacío), el backend lo genera
+            if (user.getUuid() == null || user.getUuid().trim().isEmpty()) {
+                user.setUuid(UUID.randomUUID().toString());
+            }
+
             User savedUser = userDao.save(user);
             response.put("status", "success");
             response.put("message", "Usuario registrado correctamente");
@@ -70,7 +76,6 @@ public class UserController {
             }
 
             // CRITERIO B: Sincronización Real con la tabla de Reportes (ReportDao)
-            // Usamos el método nativo exacto de tu interfaz: findByPhoneNumber
             List<Report> reportList = reportDao.findByPhoneNumber(cleanNumber);
             
             if ((reportList == null || reportList.isEmpty()) && !cleanNumber.equals(originalNumber)) {
@@ -81,7 +86,6 @@ public class UserController {
             if (reportList != null && !reportList.isEmpty()) {
                 Report reportRecord = reportList.get(0);
                 if (reportRecord != null) {
-                    // Invocamos el método que ya validamos que compila en tu ReportController
                     isSpammer = reportRecord.isSpammer(); 
                     
                     if (isSpammer) {
