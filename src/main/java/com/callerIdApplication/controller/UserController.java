@@ -23,60 +23,72 @@ public class UserController {
     @Autowired
     private ReportDao reportDao;
 
+    // Se cambia @RequestBody User por Map<String, Object> para evitar rechazos automáticos de Jackson
     @PostMapping("/user/register")
-    public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
+    public ResponseEntity<Map<String, Object>> registerUser(@RequestBody Map<String, Object> payload) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Validación de campos requeridos
-            if (user.getPhoneNumber() == null || user.getPhoneNumber().trim().isEmpty()) {
+            // 1. Extraer con tolerancia extrema a mayúsculas o minúsculas de la App Móvil
+            String phoneNumber = null;
+            if (payload.containsKey("phoneNumber")) phoneNumber = String.valueOf(payload.get("phoneNumber"));
+            else if (payload.containsKey("phonenumber")) phoneNumber = String.valueOf(payload.get("phonenumber"));
+            else if (payload.containsKey("phone")) phoneNumber = String.valueOf(payload.get("phone"));
+
+            String password = null;
+            if (payload.containsKey("password")) password = String.valueOf(payload.get("password"));
+            else if (payload.containsKey("pass")) password = String.valueOf(payload.get("pass"));
+
+            // 2. Validaciones Manuales Informativas (Para ver el error exacto en el celular)
+            if (phoneNumber == null || phoneNumber.trim().isEmpty() || "null".equalsIgnoreCase(phoneNumber)) {
                 response.put("status", "error");
-                response.put("message", "El campo phoneNumber llega vacio o nulo al backend.");
+                response.put("message", "Error 400: El celular no esta enviando el phone/phoneNumber o viaja vacio. JSON recibido: " + payload.toString());
                 return ResponseEntity.status(400).body(response);
             }
 
-            if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            if (password == null || password.trim().isEmpty() || "null".equalsIgnoreCase(password)) {
                 response.put("status", "error");
-                response.put("message", "La contraseña llega vacia o nula al backend.");
+                response.put("message", "Error 400: El celular no esta enviando el password o viaja vacio. JSON recibido: " + payload.toString());
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 2. Normalización del número
-            String cleanRegNumber = user.getPhoneNumber().replaceAll("[^0-9]", "");
+            // 3. Normalización del Número de Teléfono
+            String cleanRegNumber = phoneNumber.replaceAll("[^0-9]", "");
             if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
                 cleanRegNumber = cleanRegNumber.substring(2);
             }
-            user.setPhoneNumber(cleanRegNumber);
 
-            // 3. LOGICA FLEXIBLE PARA PRUEBAS: Si ya existe, actualiza en lugar de lanzar Error 400
+            // 4. Lógica de Persistencia Adaptativa
             User existingUser = userDao.findByPhoneNumber(cleanRegNumber);
-            if (existingUser != null) {
-                existingUser.setPassword(user.getPassword()); // Actualiza la contraseña
-                User updatedUser = userDao.save(existingUser);
-                
-                response.put("status", "success");
-                response.put("message", "El usuario ya existia. Contraseña actualizada correctamente.");
-                response.put("uuid", updatedUser.getUuid()); 
-                response.put("data", updatedUser);
-                return ResponseEntity.ok(response);
-            }
-
-            // 4. Si es nuevo, realiza la inserción limpia
             User savedUser;
-            try {
-                user.setUserId(null); // Permite el autoincremento serial de PostgreSQL
-                savedUser = userDao.save(user);
-            } catch (Exception ex) {
-                // Mecanismo de contingencia por si fallan las secuencias internas de Render
-                long totalUsers = userDao.count();
-                int manualId = (int) (totalUsers + 1L + (System.currentTimeMillis() % 500L));
-                user.setUserId(manualId);
-                savedUser = userDao.save(user);
+
+            if (existingUser != null) {
+                // Si ya existe, actualizamos su contraseña para evitar el bloqueo por duplicados
+                existingUser.setPassword(password);
+                savedUser = userDao.save(existingUser);
+                response.put("message", "Usuario ya registrado anteriormente. Contraseña actualizada.");
+            } else {
+                // Si es nuevo, instanciamos la entidad de forma segura
+                User newUser = new User();
+                newUser.setPhoneNumber(cleanRegNumber);
+                newUser.setPassword(password);
+                
+                try {
+                    newUser.setUserId(null); // Intenta el autoincremento secuencial de PostgreSQL
+                    savedUser = userDao.save(newUser);
+                } catch (Exception ex) {
+                    // Mecanismo de emergencia si fallan las secuencias en Render
+                    long totalUsers = userDao.count();
+                    int manualId = (int) (totalUsers + 1L + (System.currentTimeMillis() % 500L));
+                    newUser.setUserId(manualId);
+                    savedUser = userDao.save(newUser);
+                }
+                response.put("message", "Usuario nuevo registrado con exito en la Base de Datos.");
             }
 
+            // 5. Respuesta Exitosa Limpia (HTTP 200)
             response.put("status", "success");
-            response.put("message", "Usuario nuevo registrado correctamente.");
             response.put("uuid", savedUser.getUuid()); 
-            response.put("data", savedUser);
+            response.put("userId", savedUser.getUserId());
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
@@ -88,7 +100,7 @@ public class UserController {
                 cause = cause.getCause();
             }
             response.put("status", "error");
-            response.put("message", "Falla critica en persistencia: " + rootCauseMessage);
+            response.put("message", "Falla critica interna en backend: " + rootCauseMessage);
             return ResponseEntity.status(400).body(response);
         }
     }
