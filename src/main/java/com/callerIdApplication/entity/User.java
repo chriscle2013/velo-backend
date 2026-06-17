@@ -32,9 +32,9 @@ public class User {
     @Transient
     private boolean isActive = true;
 
-    // ATRIBUTO REQUERIDO POR USERSERVICEIMPL (Marcado como @Transient para compatibilidad)
+    // CORRECCIÓN DE TIPO: Usamos la entidad Contact propia del proyecto mapeada como Transient
     @Transient
-    private List<String> contacts = new ArrayList<>();
+    private List<Contact> contacts = new ArrayList<>();
 
     // Constructor obligatorio para JPA
     public User() {
@@ -100,15 +100,15 @@ public class User {
         this.isActive = active;
     }
 
-    // GETTER Y SETTER OBLIGATORIOS PARA SOLUCIONAR EL ERROR EN USERSERVICEIMPL
-    public List<String> getContacts() {
+    // GETTER Y SETTER CORREGIDOS CON EL TIPO DE DATO EXIGIDO POR USERSERVICEIMPL
+    public List<Contact> getContacts() {
         if (this.contacts == null) {
             this.contacts = new ArrayList<>();
         }
         return contacts;
     }
 
-    public void setContacts(List<String> contacts) {
+    public void setContacts(List<Contact> contacts) {
         this.contacts = contacts;
     }
 }
