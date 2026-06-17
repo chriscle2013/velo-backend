@@ -11,7 +11,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private Long userId; // Mantenemos Long para compatibilidad nativa con PostgreSQL
+    private Integer userId; // Restaurado a Integer para corregir LoginServiceImpl definitivamente
 
     @Column(name = "phone_number", unique = true, nullable = false)
     private String phoneNumber;
@@ -31,31 +31,21 @@ public class User {
     @Column(name = "is_active")
     private boolean isActive = true;
 
-    // 🌟 Restauramos la relación/lista que UserServiceImpl.java necesita usar
+    // Relación requerida por UserServiceImpl.java
     @Transient
     private List<Contact> contacts = new ArrayList<>();
 
     public User() {
     }
 
-    public Long getUserId() {
+    public Integer getUserId() {
         return userId;
     }
 
-    public void setUserId(Long userId) {
+    public void setUserId(Integer userId) {
         this.userId = userId;
     }
 
-    // 🌟 MÉTODOS DE COMPATIBILIDAD CRUCIALES PARA LoginServiceImpl.java
-    // Esto resuelve los errores de "incompatible types: java.lang.Long cannot be converted to java.lang.Integer"
-    // permitiendo que si el servicio pide un Integer o un Long, ambos funcionen transparentemente.
-    
-    @Transient
-    public Integer getUserIdAsInteger() {
-        return userId != null ? userId.intValue() : null;
-    }
-
-    // 🌟 Métodos para que UserServiceImpl maneje la lista de objetos Contact correctamente
     public List<Contact> getContacts() {
         if (this.contacts == null) {
             this.contacts = new ArrayList<>();
@@ -71,7 +61,7 @@ public class User {
         return phoneNumber;
     }
 
-    public void setPhoneNumber(String phoneNumber; ) {
+    public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 
