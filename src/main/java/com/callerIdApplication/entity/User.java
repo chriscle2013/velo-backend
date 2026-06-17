@@ -10,6 +10,7 @@ public class User {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id", unique = true, nullable = false)
     private Integer userId;
     
     private String userName;
