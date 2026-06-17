@@ -8,6 +8,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
+import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,70 +27,77 @@ public class UserController {
     @Autowired
     private ReportDao reportDao;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @PostMapping("/user/register")
+    @Transactional
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Forzar ID nulo para delegar el autoincremental de forma limpia a PostgreSQL
-            user.setUserId(null);
-
-            // 2. Normalización estricta del número de teléfono
-            if (user.getPhoneNumber() != null) {
-                String cleanRegNumber = user.getPhoneNumber().replaceAll("[^0-9]", "");
-                if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
-                    cleanRegNumber = cleanRegNumber.substring(2);
-                }
-                user.setPhoneNumber(cleanRegNumber);
-                
-                // Validación preventiva: Evitar registrar un número que ya existe
-                User existingUser = userDao.findByphoneNumber(cleanRegNumber);
-                if (existingUser != null) {
-                    response.put("status", "error");
-                    response.put("message", "El número de teléfono ya se encuentra registrado");
-                    return ResponseEntity.status(400).body(response);
-                }
-            } else {
+            // 1. Normalización estricta del número de teléfono
+            if (user.getPhoneNumber() == null || user.getPhoneNumber().trim().isEmpty()) {
                 response.put("status", "error");
                 response.put("message", "El campo phoneNumber es obligatorio");
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 3. Generación de un UUID de 8 caracteres homologado con el Admin
+            String cleanRegNumber = user.getPhoneNumber().replaceAll("[^0-9]", "");
+            if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
+                cleanRegNumber = cleanRegNumber.substring(2);
+            }
+            user.setPhoneNumber(cleanRegNumber);
+
+            // 2. Validación preventiva: Evitar registrar un número que ya existe
+            User existingUser = userDao.findByphoneNumber(cleanRegNumber);
+            if (existingUser != null) {
+                response.put("status", "error");
+                response.put("message", "El número de teléfono ya se encuentra registrado");
+                return ResponseEntity.status(400).body(response);
+            }
+
+            // 3. Generación de un UUID de 8 caracteres seguro
             String shortUuid = UUID.randomUUID().toString().replaceAll("-", "");
             if (shortUuid.length() > 8) {
                 shortUuid = shortUuid.substring(0, 8);
             }
             user.setUuid(shortUuid);
 
-            // 4. Valores por defecto preventivos en caso de restricciones NOT NULL en BD
-            if (user.getUserName() == null || user.getUserName().trim().isEmpty()) {
-                user.setUserName("Usuario " + user.getPhoneNumber());
-            }
-            if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
-                user.setEmail(user.getPhoneNumber() + "@callerid.local");
+            // 4. Valores por defecto preventivos
+            String name = (user.getUserName() == null || user.getUserName().trim().isEmpty()) ? "Usuario " + cleanRegNumber : user.getUserName();
+            String email = (user.getEmail() == null || user.getEmail().trim().isEmpty()) ? cleanRegNumber + "@callerid.local" : user.getEmail();
+            String password = user.getPassword();
+
+            if (password == null || password.trim().isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "La contraseña es obligatoria");
+                return ResponseEntity.status(400).body(response);
             }
 
-            // Intentar persistir en PostgreSQL
-            User savedUser = userDao.save(user);
+            // 5. INSERCIÓN MEDIANTE SQL NATIVO BINDADO (Salva problemas de secuencias o discrepancias de nombres)
+            String sql = "INSERT INTO app_user (phone_number, password, uuid, user_name, email, is_active) " +
+                         "VALUES (:phone, :pass, :uuid, :name, :email, true)";
             
+            entityManager.createNativeQuery(sql)
+                    .setParameter("phone", cleanRegNumber)
+                    .setParameter("pass", password)
+                    .setParameter("uuid", shortUuid)
+                    .setParameter("name", name)
+                    .setParameter("email", email)
+                    .executeUpdate();
+
+            // Buscar el objeto recién creado para retornar el flujo idéntico a JPA
+            User savedUser = userDao.findByphoneNumber(cleanRegNumber);
+
             response.put("status", "success");
-            response.put("message", "Usuario registrado correctamente");
+            response.put("message", "Usuario registrado correctamente mediante motor nativo");
             response.put("data", savedUser);
             return ResponseEntity.ok(response);
-            
+
         } catch (Exception e) {
             e.printStackTrace();
-            
-            // Extraer el mensaje raíz del error de base de datos para mostrarlo en el Toast
-            String detailedError = e.getMessage();
-            Throwable cause = e.getCause();
-            while (cause != null) {
-                detailedError = cause.getMessage();
-                cause = cause.getCause();
-            }
-            
             response.put("status", "error");
-            response.put("message", "Error en BD: " + detailedError);
+            response.put("message", "Excepción crítica en base de datos: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
