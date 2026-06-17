@@ -28,10 +28,10 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // Garantizar que el ID comience nulo para que la DB asigne el autoincremental real
+            // Sincronización limpia: Forzar ID nulo para evitar que herede conflictos de caché o ID duplicados
             user.setUserId(null);
 
-            // Si la app no envía un UUID (o llega vacío), el backend lo genera
+            // Si la app no envía un UUID (o llega vacío), el backend lo genera automáticamente
             if (user.getUuid() == null || user.getUuid().trim().isEmpty()) {
                 user.setUuid(UUID.randomUUID().toString());
             }
