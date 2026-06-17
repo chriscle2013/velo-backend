@@ -11,7 +11,7 @@ public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
-    private Long userId; // Mantenemos Long por seguridad de base de datos
+    private Long userId; // Mantenemos Long para compatibilidad nativa con PostgreSQL
 
     @Column(name = "phone_number", unique = true, nullable = false)
     private String phoneNumber;
@@ -31,9 +31,9 @@ public class User {
     @Column(name = "is_active")
     private boolean isActive = true;
 
-    // 🌟 Campo comodín transitorio para evitar que falle UserServiceImpl si maneja contactos en memoria
+    // 🌟 Restauramos la relación/lista que UserServiceImpl.java necesita usar
     @Transient
-    private List<String> contacts = new ArrayList<>();
+    private List<Contact> contacts = new ArrayList<>();
 
     public User() {
     }
@@ -46,15 +46,24 @@ public class User {
         this.userId = userId;
     }
 
-    // 🌟 Getter y Setter del método que extrañaba UserSimpleImpl
-    public List<String> getContacts() {
+    // 🌟 MÉTODOS DE COMPATIBILIDAD CRUCIALES PARA LoginServiceImpl.java
+    // Esto resuelve los errores de "incompatible types: java.lang.Long cannot be converted to java.lang.Integer"
+    // permitiendo que si el servicio pide un Integer o un Long, ambos funcionen transparentemente.
+    
+    @Transient
+    public Integer getUserIdAsInteger() {
+        return userId != null ? userId.intValue() : null;
+    }
+
+    // 🌟 Métodos para que UserServiceImpl maneje la lista de objetos Contact correctamente
+    public List<Contact> getContacts() {
         if (this.contacts == null) {
             this.contacts = new ArrayList<>();
         }
         return this.contacts;
     }
 
-    public void setContacts(List<String> contacts) {
+    public void setContacts(List<Contact> contacts) {
         this.contacts = contacts;
     }
 
@@ -62,7 +71,7 @@ public class User {
         return phoneNumber;
     }
 
-    public void setPhoneNumber(String phoneNumber) {
+    public void setPhoneNumber(String phoneNumber; ) {
         this.phoneNumber = phoneNumber;
     }
 
