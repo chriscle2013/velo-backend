@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @CrossOrigin(origins = "*")
@@ -28,7 +27,7 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody User user) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Normalización y validación estricta del número de teléfono
+            // 1. Validación preventiva del número de teléfono
             if (user.getPhoneNumber() == null || user.getPhoneNumber().trim().isEmpty()) {
                 response.put("status", "error");
                 response.put("message", "El campo phoneNumber es requerido.");
@@ -41,7 +40,13 @@ public class UserController {
             }
             user.setPhoneNumber(cleanRegNumber);
 
-            // 2. Comprobación preventiva de duplicados
+            if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+                response.put("status", "error");
+                response.put("message", "La contraseña es obligatoria.");
+                return ResponseEntity.status(400).body(response);
+            }
+
+            // 2. Comprobación de duplicados
             User existingUser = userDao.findByphoneNumber(cleanRegNumber);
             if (existingUser != null) {
                 response.put("status", "error");
@@ -49,54 +54,24 @@ public class UserController {
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 3. Generación del UUID corto de 8 caracteres libre de fallas
-            String shortUuid = UUID.randomUUID().toString().replaceAll("-", "");
-            if (shortUuid.length() > 8) {
-                shortUuid = shortUuid.substring(0, 8);
-            }
-            user.setUuid(shortUuid);
-
-            // 4. Asignación de valores por defecto obligatorios
-            if (user.getUserName() == null || user.getUserName().trim().isEmpty()) {
-                user.setUserName("Usuario " + cleanRegNumber);
-            }
-            if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
-                user.setEmail(cleanRegNumber + "@callerid.local");
-            }
-            user.setActive(true);
-
-            if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
-                response.put("status", "error");
-                response.put("message", "La contraseña es obligatoria.");
-                return ResponseEntity.status(400).body(response);
-            }
-
-            // 5. Guardado seguro con control adaptativo de IDs (Compatible con Integer)
+            // 3. Guardado directo y limpio (Solo persistirá userId, phoneNumber y password)
+            User savedUser;
             try {
-                user.setUserId(null);
-                User savedUser = userDao.save(user);
-                
-                response.put("status", "success");
-                response.put("message", "Usuario registrado correctamente.");
-                response.put("data", savedUser);
-                return ResponseEntity.ok(response);
-                
+                user.setUserId(null); // Deja que la secuencia de la BD asigne el ID automático
+                savedUser = userDao.save(user);
             } catch (Exception ex) {
-                // Si la secuencia automática falla, calculamos un ID manual compatible con Integer
+                // Contingencia en caso de desincronización física de secuencias en PostgreSQL
                 long totalUsers = userDao.count();
-                long timeSeed = System.currentTimeMillis() % 1000000L;
-                
-                // Conversión matemática explícita y segura a Integer sin pérdida de precisión catastrófica
-                int manualId = (int) (totalUsers + 1L + timeSeed);
+                int manualId = (int) (totalUsers + 1L + (System.currentTimeMillis() % 500L));
                 user.setUserId(manualId);
-                
-                User savedUser = userDao.save(user);
-                
-                response.put("status", "success");
-                response.put("message", "Usuario registrado correctamente con ID asignado.");
-                response.put("data", savedUser);
-                return ResponseEntity.ok(response);
+                savedUser = userDao.save(user);
             }
+
+            response.put("status", "success");
+            response.put("message", "Usuario registrado correctamente.");
+            response.put("uuid", savedUser.getUuid()); 
+            response.put("data", savedUser);
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -109,7 +84,7 @@ public class UserController {
             }
 
             response.put("status", "error");
-            response.put("message", "Falla final en persistencia: " + rootCauseMessage);
+            response.put("message", "Falla en persistencia: " + rootCauseMessage);
             return ResponseEntity.status(400).body(response);
         }
     }
