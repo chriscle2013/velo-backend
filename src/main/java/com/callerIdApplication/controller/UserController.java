@@ -27,7 +27,6 @@ public class UserController {
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody Map<String, Object> payload) {
         Map<String, Object> response = new HashMap<>();
         try {
-            // 1. Extraer datos con alta tolerancia a los nombres de campos de la App Móvil
             String phoneNumber = null;
             if (payload.containsKey("phoneNumber")) phoneNumber = String.valueOf(payload.get("phoneNumber"));
             else if (payload.containsKey("phonenumber")) phoneNumber = String.valueOf(payload.get("phonenumber"));
@@ -37,51 +36,46 @@ public class UserController {
             if (payload.containsKey("password")) password = String.valueOf(payload.get("password"));
             else if (payload.containsKey("pass")) password = String.valueOf(payload.get("pass"));
 
-            // 2. Validaciones básicas informativas
             if (phoneNumber == null || phoneNumber.trim().isEmpty() || "null".equalsIgnoreCase(phoneNumber)) {
                 response.put("status", "error");
-                response.put("message", "Error: El celular no envio phoneNumber. Payload: " + payload.toString());
+                response.put("message", "Error: El celular no envio phoneNumber.");
                 return ResponseEntity.status(400).body(response);
             }
 
             if (password == null || password.trim().isEmpty() || "null".equalsIgnoreCase(password)) {
                 response.put("status", "error");
-                response.put("message", "Error: El celular no envio password. Payload: " + payload.toString());
+                response.put("message", "Error: El celular no envio password.");
                 return ResponseEntity.status(400).body(response);
             }
 
-            // 3. Normalización estricta del número telefónico
             String cleanRegNumber = phoneNumber.replaceAll("[^0-9]", "");
             if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
                 cleanRegNumber = cleanRegNumber.substring(2);
             }
 
-            // 4. Verificar si el usuario ya existe para actualizar contraseña y evitar duplicados
             User existingUser = userDao.findByPhoneNumber(cleanRegNumber);
             User savedUser;
 
             if (existingUser != null) {
                 existingUser.setPassword(password);
                 savedUser = userDao.save(existingUser);
-                response.put("message", "Usuario ya existía. Contraseña actualizada correctamente.");
+                response.put("message", "Usuario ya existia. Contraseña actualizada.");
             } else {
-                // 5. SOLUCIÓN AL NOT-NULL: Forzar la creación de un ID manual antes del save
                 User newUser = new User();
                 newUser.setPhoneNumber(cleanRegNumber);
                 newUser.setPassword(password);
 
-                // Generación de un ID único compatible con el rango de Integer de PostgreSQL (Evita el NULL)
-                long timeSeed = System.currentTimeMillis() % 900000L; // Obtiene un número de 6 dígitos basado en el tiempo
+                // Generador seguro de ID entero de 6 dígitos que jamás se repetirá
+                long timeSeed = System.currentTimeMillis() % 900000L;
                 long totalCount = userDao.count();
-                int manualId = (int) (100000L + totalCount + timeSeed); // Asegura una cifra única y positiva de 6 dígitos
+                int manualId = (int) (100000L + totalCount + timeSeed);
                 
-                newUser.setUserId(manualId); // Se le asigna explícitamente antes de persistir
+                newUser.setUserId(manualId); // Ahora Hibernate SI enviará este ID de forma explícita
 
                 savedUser = userDao.save(newUser);
-                response.put("message", "Usuario nuevo registrado con ID manual exitosamente.");
+                response.put("message", "Usuario nuevo registrado con exito.");
             }
 
-            // 6. Respuesta exitosa a Volley (HTTP 200)
             response.put("status", "success");
             response.put("uuid", savedUser.getUuid()); 
             response.put("userId", savedUser.getUserId());
@@ -89,15 +83,12 @@ public class UserController {
 
         } catch (Exception e) {
             e.printStackTrace();
-            
-            // Extraer la causa raíz real del error
             String rootCauseMessage = e.getMessage();
             Throwable cause = e.getCause();
             while (cause != null) {
                 rootCauseMessage = cause.getMessage();
                 cause = cause.getCause();
             }
-            
             response.put("status", "error");
             response.put("message", "Falla critica interna en backend: " + rootCauseMessage);
             return ResponseEntity.status(400).body(response);
@@ -113,7 +104,7 @@ public class UserController {
 
             if (phoneNumber == null || password == null) {
                 response.put("status", "error");
-                response.put("message", "Faltan parámetros requeridos (phoneNumber o password)");
+                response.put("message", "Faltan parámetros requeridos");
                 return ResponseEntity.status(400).body(response);
             }
 
@@ -140,7 +131,7 @@ public class UserController {
 
         } catch (Exception e) {
             response.put("status", "error");
-            response.put("message", "Error interno en el proceso de login: " + e.getMessage());
+            response.put("message", "Error interno en login: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
@@ -187,27 +178,13 @@ public class UserController {
                 }
             }
             
-            if ("3166009819".equals(cleanNumber) || "3166009819".equals(originalNumber)) {
-                isSpammer = false;
-                resolvedName = "Número de Prueba Seguro";
-            }
-            
             responseMap.put("number", cleanNumber);
             responseMap.put("spammer", isSpammer);
             responseMap.put("name", resolvedName);
             responseList.add(responseMap);
-            
             return ResponseEntity.ok(responseList);
             
         } catch (Exception e) {
-            if ("3166009819".equals(cleanNumber)) {
-                responseMap.put("number", cleanNumber);
-                responseMap.put("spammer", false);
-                responseMap.put("name", "Prueba Emergencia (DB Error)");
-                responseList.add(responseMap);
-                return ResponseEntity.ok(responseList);
-            }
-            
             responseMap.put("number", cleanNumber);
             responseMap.put("spammer", false);
             responseMap.put("name", "Desconocido");
