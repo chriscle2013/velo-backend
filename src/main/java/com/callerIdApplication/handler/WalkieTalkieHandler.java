@@ -1,6 +1,5 @@
-package com.callerid.handler;
+package com.callerIdApplication.handler;
 
-import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.WebSocketSession;
@@ -13,6 +12,8 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+
+public class WalkieTalkieHandler extends BinaryWebSocketHandler {
 
     // Mapa dinámico que agrupa las sesiones de usuarios por el nombre de su canal privado
     private final Map<String, Set<WebSocketSession>> channels = new ConcurrentHashMap<>();
