@@ -14,9 +14,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-@Component
-public class WalkieTalkieHandler extends BinaryWebSocketHandler {
-
     // Mapa dinámico que agrupa las sesiones de usuarios por el nombre de su canal privado
     private final Map<String, Set<WebSocketSession>> channels = new ConcurrentHashMap<>();
 
