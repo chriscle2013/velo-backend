@@ -1,0 +1,11 @@
+@Entity
+public class SmsSpamData {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String senderNumber;
+    private String messageContent;
+    private boolean isBlocked; // Si esto es true, el backend avisará que es spam
+    private LocalDateTime reportedAt;
+    // Getters y Setters...
+}
