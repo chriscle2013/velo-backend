@@ -1,0 +1,20 @@
+<table>
+    <thead>
+        <tr>
+            <th>Remitente</th>
+            <th>Contenido del SMS</th>
+            <th>Acción</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for report in sms_reports %}
+        <tr>
+            <td>{{ report.sender }}</td>
+            <td>{{ report.content }}</td>
+            <td>
+                <button onclick="blacklistSender('{{report.sender}}')">Bloquear Remitente</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
