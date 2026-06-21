@@ -1,5 +1,4 @@
 package com.callerIdApplication.controller;
-
 import com.callerIdApplication.entity.Report;
 import com.callerIdApplication.entity.User;
 import com.callerIdApplication.repostitory.ReportDao;
@@ -9,22 +8,27 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
 import javax.servlet.http.HttpSession;
+import java.util.List;
 import java.util.Optional;
-
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
-
-    @Autowired private UserDao userDao;
-    @Autowired private SessionDao sessionDao;
-    @Autowired private ReportDao reportDao;
+    @Autowired
+    private UserDao userDao;
+    
+    @Autowired
+    private SessionDao sessionDao;
+    
+    @Autowired
+    private ReportDao reportDao;
     
     private static final String ADMIN_PASSWORD = "admin123";
     
     @GetMapping("/login")
-    public String showLoginForm() { return "admin/login"; }
+    public String showLoginForm() {
+        return "admin/login";
+    }
     
     @PostMapping("/login")
     public String doLogin(@RequestParam String password, HttpSession session) {
@@ -37,74 +41,88 @@ public class AdminController {
     
     @GetMapping("/dashboard")
     public String dashboard(Model model, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
-        model.addAttribute("totalUsers", userDao.count());
-        model.addAttribute("activeSessions", sessionDao.count());
-        model.addAttribute("totalReports", reportDao.count());
+        if (session.getAttribute("admin_logged") == null) {
+            return "redirect:/admin/login";
+        }
+        
+        long totalUsers = userDao.count();
+        long activeSessions = sessionDao.count();
+        long totalReports = reportDao.count();
+        
+        model.addAttribute("totalUsers", totalUsers);
+        model.addAttribute("activeSessions", activeSessions);
+        model.addAttribute("totalReports", totalReports);
         model.addAttribute("page", "admin/dashboard");
         return "admin/layout";
     }
     
     @GetMapping("/numbers")
     public String listNumbers(Model model, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
-        model.addAttribute("users", userDao.findAll());
+        if (session.getAttribute("admin_logged") == null) {
+            return "redirect:/admin/login";
+        }
+        
+        Iterable<User> allUsers = userDao.findAll();
+        model.addAttribute("users", allUsers);
         model.addAttribute("page", "admin/numbers");
         return "admin/layout";
-    }
-
-    // Acción para marcar usuario como spam usando solo lo que ya existe
-    @PostMapping("/numbers/{userId}/mark-spam")
-    public String markUserAsSpam(@PathVariable("userId") Long userId, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
-        
-        Optional<User> userOpt = userDao.findById(userId);
-        if (userOpt.isPresent()) {
-            Report report = new Report();
-            report.setPhoneNumber(userOpt.get().getPhoneNumber());
-            report.setSpammer(true);
-            report.setComment("Marcado como spam manualmente por Admin");
-            reportDao.save(report);
-        }
-        return "redirect:/admin/numbers";
     }
     
     @GetMapping("/reports")
     public String listReports(Model model, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
-        model.addAttribute("reports", reportDao.findAll());
+        if (session.getAttribute("admin_logged") == null) {
+            return "redirect:/admin/login";
+        }
+        
+        List<Report> allReports = reportDao.findAll();
+        model.addAttribute("reports", allReports);
         model.addAttribute("page", "admin/reports");
         return "admin/layout";
     }
     
     @PostMapping("/reports/{id}/toggle-spam")
-    public String toggleSpam(@PathVariable("id") Long id, HttpSession session) {
-        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
-        
-        Optional<Report> reportOpt = reportDao.findById(id);
-        if (reportOpt.isPresent()) {
-            Report report = reportOpt.get();
-            report.setSpammer(!report.isSpammer());
-            reportDao.save(report);
+    public String toggleSpam(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) {
+            return "redirect:/admin/login";
         }
+        
+        try {
+            Optional<Report> reportOpt = reportDao.findById(id);
+            if (reportOpt.isPresent()) {
+                Report report = reportOpt.get();
+                boolean newStatus = !report.isSpammer();
+                report.setSpammer(newStatus);
+                reportDao.save(report);
+            }
+        } catch (Exception e) {
+            System.out.println("Error toggling spam: " + e.getMessage());
+        }
+        
         return "redirect:/admin/reports";
     }
     
+    // ========== NUEVO ENDPOINT PARA ASIGNAR UUID FIJO ==========
     @GetMapping("/fix-uuid/{phoneNumber}")
     @ResponseBody
     public String fixUuid(@PathVariable String phoneNumber) {
-        User user = userDao.findByphoneNumber(phoneNumber);
-        if (user != null) {
-            if (user.getUuid() == null || user.getUuid().isEmpty()) {
-                String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
-                user.setUuid(newUuid);
-                userDao.save(user);
-                return "✅ UUID asignado: " + newUuid;
+        try {
+            User user = userDao.findByphoneNumber(phoneNumber);
+            if (user != null) {
+                if (user.getUuid() == null || user.getUuid().isEmpty()) {
+                    String newUuid = java.util.UUID.randomUUID().toString().substring(0, 8);
+                    user.setUuid(newUuid);
+                    userDao.save(user);
+                    return "✅ UUID asignado: " + newUuid + " para el número " + phoneNumber;
+                } else {
+                    return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
+                }
             }
-            return "ℹ️ El usuario ya tiene UUID: " + user.getUuid();
+            return "❌ Usuario no encontrado con número: " + phoneNumber;
+        } catch (Exception e) {
+            return "❌ Error: " + e.getMessage();
         }
-        return "❌ Usuario no encontrado";
     }
+    // ========== FIN DEL ENDPOINT ==========
     
     @GetMapping("/logout")
     public String logout(HttpSession session) {
