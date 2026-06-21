@@ -1,4 +1,4 @@
-package com.velo.repository;
+package com.callerIdApplication.repostitory;
 
 import com.velo.model.SmsSpamReport;
 import org.springframework.data.jpa.repository.JpaRepository;
