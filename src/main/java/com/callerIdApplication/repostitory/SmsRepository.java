@@ -1,4 +1,4 @@
-package com.callerid.backend.repository;
+import com.callerIdApplication.model.SmsSpamReport;
 
 import com.callerid.backend.model.SmsReport;
 import org.springframework.data.jpa.repository.JpaRepository;
