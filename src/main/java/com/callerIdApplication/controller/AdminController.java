@@ -27,7 +27,8 @@ public class AdminController {
     private static final String ADMIN_PASSWORD = "admin123";
     
     // ... otros autowired ...
-    @Autowired private SmsRepository smsRepository; 
+    @Autowired 
+    private SmsRepository smsRepository; 
 
     // Nuevo método para listar SMS reportados
     @GetMapping("/sms-reports")
