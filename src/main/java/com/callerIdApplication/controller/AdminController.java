@@ -4,6 +4,10 @@ import com.callerIdApplication.entity.User;
 import com.callerIdApplication.repostitory.ReportDao;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
+import com.callerIdApplication.model.PhoneNumber;
+import com.callerIdApplication.model.SmsSpamReport;
+import com.callerIdApplication.repostitory.PhoneNumberRepository;
+import com.callerIdApplication.repostitory.SmsSpamRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,6 +28,12 @@ public class AdminController {
     private ReportDao reportDao;
     
     private static final String ADMIN_PASSWORD = "admin123";
+
+    @Autowired 
+    private PhoneNumberRepository phoneNumberRepository;
+
+    @Autowired 
+    private SmsSpamRepository smsSpamRepository;
     
     @GetMapping("/login")
     public String showLoginForm() {
@@ -79,7 +89,15 @@ public class AdminController {
         model.addAttribute("page", "admin/reports");
         return "admin/layout";
     }
-    
+
+    @GetMapping("/sms-reports")
+    public String listSmsReports(Model model, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
+        
+        model.addAttribute("smsReports", smsSpamRepository.findAll());
+        model.addAttribute("page", "admin/sms-reports"); // Necesitarás crear este archivo .html en tus plantillas
+        return "admin/layout";
+    }
     @PostMapping("/reports/{id}/toggle-spam")
     public String toggleSpam(@PathVariable Long id, HttpSession session) {
         if (session.getAttribute("admin_logged") == null) {
@@ -100,7 +118,28 @@ public class AdminController {
         
         return "redirect:/admin/reports";
     }
-    
+    // 2. NUEVO: Marcar/Desmarcar Spam en Números
+    @PostMapping("/numbers/{id}/toggle-spam")
+    public String toggleNumberSpam(@PathVariable Long id, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
+        
+        phoneNumberRepository.findById(id).ifPresent(n -> {
+            n.setSpam(!n.isSpam());
+            phoneNumberRepository.save(n);
+        });
+        return "redirect:/admin/numbers";
+    }
+    // 3. NUEVO: Aprobar/Rechazar SMS
+    @PostMapping("/sms-reports/{id}/status")
+    public String updateSmsStatus(@PathVariable Long id, @RequestParam String status, HttpSession session) {
+        if (session.getAttribute("admin_logged") == null) return "redirect:/admin/login";
+        
+        smsSpamRepository.findById(id).ifPresent(s -> {
+            s.setStatus(status);
+            smsSpamRepository.save(s);
+        });
+        return "redirect:/admin/sms-reports";
+    }
     // ========== NUEVO ENDPOINT PARA ASIGNAR UUID FIJO ==========
     @GetMapping("/fix-uuid/{phoneNumber}")
     @ResponseBody
