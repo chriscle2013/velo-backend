@@ -4,6 +4,7 @@ import com.callerIdApplication.entity.User;
 import com.callerIdApplication.repostitory.ReportDao;
 import com.callerIdApplication.repostitory.SessionDao;
 import com.callerIdApplication.repostitory.UserDao;
+import com.callerIdApplication.repostitory.SmsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -24,6 +25,9 @@ public class AdminController {
     private ReportDao reportDao;
     
     private static final String ADMIN_PASSWORD = "admin123";
+
+    @Autowired
+    private SmsRepository smsRepository;
     
     @GetMapping("/login")
     public String showLoginForm() {
@@ -129,4 +133,15 @@ public class AdminController {
         session.invalidate();
         return "redirect:/admin/login";
     }
+    @GetMapping("/sms-reports")
+public String listSmsReports(Model model, HttpSession session) {
+    if (session.getAttribute("admin_logged") == null) {
+        return "redirect:/admin/login";
+    }
+    
+    // Obtenemos los reportes de SMS del repositorio
+    model.addAttribute("smsReports", smsRepository.findAll());
+    model.addAttribute("page", "admin/sms-reports");
+    return "admin/layout";
+}
 }
