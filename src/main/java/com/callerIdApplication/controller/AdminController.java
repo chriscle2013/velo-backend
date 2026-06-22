@@ -55,22 +55,24 @@ public class AdminController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(Model model, HttpSession session) {
-        if (!isAdmin(session)) return "redirect:/admin/login";
+public String dashboard(Model model, HttpSession session) {
+    if (!isAdmin(session)) return "redirect:/admin/login";
 
-        model.addAttribute("totalUsers", userDao.count());
-        model.addAttribute("activeSessions", sessionDao.count());
-        model.addAttribute("totalReports", reportDao.count());
-        model.addAttribute("totalSmsSpam", smsDao.count());
+    model.addAttribute("totalUsers", userDao.count());
+    model.addAttribute("activeSessions", sessionDao.count());
+    model.addAttribute("totalReports", reportDao.count());
+    model.addAttribute("totalSmsSpam", smsDao.count());
 
-        List<SearchHistory> recentActivity = historyDao.findAll();
-        model.addAttribute("recentHistory", recentActivity.stream()
-                .limit(10)
-                .collect(Collectors.toList()));
+    // 🔥 CAMBIO AQUÍ: Usamos el nuevo método que ordena por fecha descendente
+    List<SearchHistory> recentActivity = historyDao.findAllByOrderBySearchDateDesc();
+    
+    model.addAttribute("recentHistory", recentActivity.stream()
+            .limit(10)
+            .collect(Collectors.toList()));
 
-        model.addAttribute("page", "admin/dashboard");
-        return "admin/layout";
-    }
+    model.addAttribute("page", "admin/dashboard");
+    return "admin/layout";
+}
 
     @GetMapping("/numbers")
     public String listNumbers(Model model, HttpSession session) {
