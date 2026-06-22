@@ -29,14 +29,13 @@ public class AdminController {
     private ReportDao reportDao;
 
     @Autowired
-    private HistoryDao historyDao; // Para el feed de actividad
+    private HistoryDao historyDao; 
 
     @Autowired
-    private SmsDao smsDao; // Debes tener este repositorio para los reportes de SMS
+    private SmsDao smsDao; 
 
     private static final String ADMIN_PASSWORD = "admin123";
 
-    // --- SEGURIDAD: MÉTODO AUXILIAR ---
     private boolean isAdmin(HttpSession session) {
         return session.getAttribute("admin_logged") != null;
     }
@@ -59,13 +58,11 @@ public class AdminController {
     public String dashboard(Model model, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/admin/login";
 
-        // Estadísticas principales
         model.addAttribute("totalUsers", userDao.count());
         model.addAttribute("activeSessions", sessionDao.count());
         model.addAttribute("totalReports", reportDao.count());
         model.addAttribute("totalSmsSpam", smsDao.count());
 
-        // Feed de actividad reciente (Últimos 10 movimientos en la app)
         List<SearchHistory> recentActivity = historyDao.findAll();
         model.addAttribute("recentHistory", recentActivity.stream()
                 .limit(10)
@@ -78,21 +75,20 @@ public class AdminController {
     @GetMapping("/numbers")
     public String listNumbers(Model model, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/admin/login";
-        
         model.addAttribute("users", userDao.findAll());
         model.addAttribute("page", "admin/numbers");
         return "admin/layout";
     }
 
-    // 🛡️ VERIFICAR USUARIO (Añadir escudo oficial)
+    // 🛡️ CORREGIDO: Cambio de Long a Integer para compatibilidad con UserDao
     @PostMapping("/user/{id}/verify")
-    public String verifyUser(@PathVariable Long id, HttpSession session) {
+    public String verifyUser(@PathVariable Integer id, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/admin/login";
         
         Optional<User> userOpt = userDao.findById(id);
         if (userOpt.isPresent()) {
             User user = userOpt.get();
-            if (!user.getUserName().contains("🛡️")) {
+            if (user.getUserName() != null && !user.getUserName().contains("🛡️")) {
                 user.setUserName("🛡️ " + user.getUserName());
                 userDao.save(user);
             }
@@ -103,17 +99,14 @@ public class AdminController {
     @GetMapping("/reports")
     public String listReports(Model model, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/admin/login";
-        
         model.addAttribute("reports", reportDao.findAll());
         model.addAttribute("page", "admin/reports");
         return "admin/layout";
     }
 
-    // 📥 NUEVO: LISTAR REPORTES DE SMS SPAM
     @GetMapping("/sms-reports")
     public String listSmsReports(Model model, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/admin/login";
-        
         model.addAttribute("smsReports", smsDao.findAll());
         model.addAttribute("page", "admin/sms-reports");
         return "admin/layout";
@@ -129,7 +122,6 @@ public class AdminController {
     @PostMapping("/reports/{id}/toggle-spam")
     public String toggleSpam(@PathVariable Long id, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/admin/login";
-        
         try {
             Optional<Report> reportOpt = reportDao.findById(id);
             if (reportOpt.isPresent()) {
