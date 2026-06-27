@@ -1,40 +1,69 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="admin/layout :: head"></head>
-<body>
+<body style="background-color: #020617;">
     <div th:replace="admin/layout :: body"></div>
     
     <div th:fragment="content">
-    <h3>📥 Buzón de SMS Sospechosos</h3>
-    <div class="card bg-dark text-white shadow">
-        <div class="card-body">
-            <table class="table table-dark">
-                <thead>
-                    <tr>
-                        <th>Remitente</th>
-                        <th>Mensaje Detectado</th>
-                        <th>Categoría</th>
-                        <th>Reportado por</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="s : ${reports}">
-                        <td th:text="${s.phoneNumber}" class="text-warning font-weight-bold"></td>
-                        <td th:text="${s.messageBody}" style="max-width: 300px; font-size: 0.9em;"></td>
-                        <td><span class="badge bg-danger" th:text="${s.category}"></span></td>
-                        <td th:text="${s.reportedBy}"></td>
-                        <td>
-                            <form th:action="@{/admin/sms/delete/{id}(id=${s.id})}" method="post">
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
-                            </form>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="text-white fw-bold mb-0">Mensajes de Spam Detectados</h3>
+                <p class="text-muted small">Buzón de reportes automáticos y manuales de SMS fraudulentos.</p>
+            </div>
+            <span class="badge bg-warning text-dark p-2 px-3 shadow" style="border-radius: 10px;">
+                <i class="fas fa-comment-slash me-2"></i> <span th:text="${#lists.size(smsReports)}">0</span> Reportes
+            </span>
         </div>
-    </div>
-</div>
+
+        <div class="card shadow-lg border-0" style="border-radius: 24px; background-color: #0F172A; overflow: hidden;">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover align-middle mb-0">
+                        <thead class="text-secondary small text-uppercase" style="background-color: #1E293B;">
+                            <tr>
+                                <th class="ps-4 py-3">Remitente (Número)</th>
+                                <th>Contenido del Mensaje</th>
+                                <th>Categoría</th>
+                                <th>Reportado Por</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="sms : ${smsReports}" style="border-bottom: 1px solid #1E293B;">
+                                <td class="ps-4 py-3">
+                                    <span class="text-info fw-bold" th:text="${sms.phoneNumber}">300...</span>
+                                </td>
+                                <td>
+                                    <div class="p-2 rounded bg-dark border border-secondary small" 
+                                         style="max-width: 350px; color: #E2E8F0;" 
+                                         th:text="${sms.messageBody}">
+                                        Texto del mensaje sospechoso...
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-danger" th:text="${sms.category}">Phishing</span>
+                                </td>
+                                <td th:text="${sms.reportedBy}">Usuario</td>
+                                <td class="text-center">
+                                    <form th:action="@{/admin/sms-reports/{id}/delete(id=${sms.id})}" method="post">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" 
+                                                onclick="return confirm('¿Eliminar este reporte de la base de datos?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(smsReports)}">
+                                <td colspan="5" class="text-center py-5 text-muted">
+                                    <i class="fas fa-envelope-open fa-3x d-block mb-3 opacity-20"></i>
+                                    No hay mensajes de spam reportados aún.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </body>
 </html>
