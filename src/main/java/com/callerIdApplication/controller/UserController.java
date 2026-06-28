@@ -2,8 +2,10 @@ package com.callerIdApplication.controller;
 
 import com.callerIdApplication.entity.User;
 import com.callerIdApplication.entity.Report;
+import com.callerIdApplication.entity.NameAssignment;
 import com.callerIdApplication.repostitory.UserDao;
 import com.callerIdApplication.repostitory.ReportDao;
+import com.callerIdApplication.repostitory.NameAssignmentDao;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -23,6 +25,13 @@ public class UserController {
     @Autowired
     private ReportDao reportDao;
 
+    @Autowired
+    private NameAssignmentDao nameAssignmentDao;
+
+    /**
+     * REGISTRO Y ACTUALIZACIÓN DE USUARIOS
+     * Permite guardar datos de perfil (Nombre, Email, Trabajo)
+     */
     @PostMapping("/user/register")
     public ResponseEntity<Map<String, Object>> registerUser(@RequestBody Map<String, Object> payload) {
         Map<String, Object> response = new HashMap<>();
@@ -35,10 +44,11 @@ public class UserController {
 
             if (phoneNumber == null || phoneNumber.trim().isEmpty()) {
                 response.put("status", "error");
-                response.put("message", "Falta phoneNumber");
+                response.put("message", "Número de teléfono requerido");
                 return ResponseEntity.status(400).body(response);
             }
 
+            // Normalización
             String cleanRegNumber = phoneNumber.replaceAll("[^0-9]", "");
             if (cleanRegNumber.length() == 12 && cleanRegNumber.startsWith("57")) {
                 cleanRegNumber = cleanRegNumber.substring(2);
@@ -51,9 +61,9 @@ public class UserController {
                 if (password != null) existingUser.setPassword(password);
                 existingUser.setUserName(userName);
                 existingUser.setEmail(email);
-                existingUser.setWork(work); // Guardar profesión
+                existingUser.setWork(work);
                 savedUser = userDao.save(existingUser);
-                response.put("message", "Perfil actualizado.");
+                response.put("message", "Perfil actualizado con éxito.");
             } else {
                 User newUser = new User();
                 newUser.setPhoneNumber(cleanRegNumber);
@@ -65,7 +75,7 @@ public class UserController {
                 long timeSeed = System.currentTimeMillis() % 899999L;
                 newUser.setUserId((int) (100000 + timeSeed));
                 savedUser = userDao.save(newUser);
-                response.put("message", "Registro exitoso.");
+                response.put("message", "Usuario registrado exitosamente.");
             }
 
             response.put("status", "success");
@@ -75,11 +85,15 @@ public class UserController {
 
         } catch (Exception e) {
             response.put("status", "error");
-            response.put("message", "Falla: " + e.getMessage());
+            response.put("message", "Error en persistencia: " + e.getMessage());
             return ResponseEntity.status(400).body(response);
         }
     }
 
+    /**
+     * INICIO DE SESIÓN
+     * Devuelve los datos del perfil para restauración automática en la App
+     */
     @PostMapping("/user/login")
     public ResponseEntity<Map<String, Object>> loginUser(@RequestBody Map<String, String> credentials) {
         Map<String, Object> response = new HashMap<>();
@@ -97,25 +111,26 @@ public class UserController {
             if (user != null && user.getPassword().equals(password)) {
                 response.put("status", "success");
                 response.put("uuid", user.getUuid()); 
-                
-                // 🔥 ESTO ES LO QUE RESTAURA TU PERFIL AL VOLVER A ENTRAR
                 response.put("userName", user.getUserName());
                 response.put("email", user.getEmail());
                 response.put("work", user.getWork()); 
-                
                 return ResponseEntity.ok(response);
             } else {
                 response.put("status", "error");
-                response.put("message", "Credenciales incorrectas");
+                response.put("message", "Teléfono o contraseña incorrectos");
                 return ResponseEntity.status(401).body(response);
             }
         } catch (Exception e) {
             response.put("status", "error");
-            response.put("message", "Error: " + e.getMessage());
+            response.put("message", "Error interno: " + e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
 
+    /**
+     * BÚSQUEDA DE IDENTIDAD VELO
+     * Jerarquía: Spammer > Nombre sugerido por comunidad > Nombre de usuario
+     */
     @GetMapping("/user/searchPerson/number={number}")
     public ResponseEntity<List<Map<String, Object>>> searchPerson(
             @PathVariable("number") String number,
@@ -130,37 +145,76 @@ public class UserController {
         }
         
         try {
+            // 1. Verificar si es un usuario registrado en Velo
             User foundUser = userDao.findByPhoneNumber(cleanNumber);
-            String resolvedName = "Unknown";
-            boolean isSpammer = false;
-
+            String resolvedName = "Desconocido";
             if (foundUser != null) {
                 resolvedName = foundUser.getUserName();
-                // Si el usuario tiene un trabajo/empresa, lo mostramos
                 if (foundUser.getWork() != null && !foundUser.getWork().isEmpty()) {
                     resolvedName += " (" + foundUser.getWork() + ")";
                 }
             }
 
-            List<Report> reportList = reportDao.findByPhoneNumber(cleanNumber);
-            if (reportList != null && !reportList.isEmpty()) {
-                Report reportRecord = reportList.get(0);
-                isSpammer = reportRecord.isSpammer(); 
-                if (isSpammer) {
-                    resolvedName = (reportRecord.getCategory() != null) ? "Alerta: " + reportRecord.getCategory() : "SPAM";
-                }
+            // 2. Buscar si la comunidad ha sugerido un nombre (assignedName)
+            String communityName = "";
+            List<NameAssignment> communitySmsNames = nameAssignmentDao.findByPhoneNumberOrderByIdDesc(cleanNumber);
+            if (communitySmsNames != null && !communitySmsNames.isEmpty()) {
+                communityName = communitySmsNames.get(0).getAssignedName();
+            }
+
+            // 3. Verificar si el número está marcado como Spammer
+            boolean isSpammer = false;
+            String category = "";
+            List<Report> reports = reportDao.findByPhoneNumber(cleanNumber);
+            if (reports != null && !reports.isEmpty()) {
+                Report firstReport = reports.get(0);
+                isSpammer = firstReport.isSpammer(); 
+                category = firstReport.getCategory();
             }
             
             responseMap.put("number", cleanNumber);
             responseMap.put("spammer", isSpammer);
             responseMap.put("name", resolvedName);
+            responseMap.put("assignedName", communityName); // Se envía por separado para la App
+            responseMap.put("category", category);
+            
             responseList.add(responseMap);
             return ResponseEntity.ok(responseList);
             
         } catch (Exception e) {
-            responseMap.put("name", "Desconocido");
+            responseMap.put("number", cleanNumber);
+            responseMap.put("name", "Error de red");
             responseList.add(responseMap);
             return ResponseEntity.status(500).body(responseList);
+        }
+    }
+
+    /**
+     * SUGERIR UN NOMBRE (COMUNIDAD)
+     */
+    @PostMapping("/name/assign")
+    public ResponseEntity<Map<String, Object>> assignName(@RequestBody Map<String, String> payload, @RequestParam String key) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String phoneNumber = payload.get("phoneNumber");
+            String assignedName = payload.get("assignedName");
+            String assignedBy = payload.get("assignedBy");
+
+            if (phoneNumber == null || assignedName == null) {
+                response.put("status", "error");
+                return ResponseEntity.badRequest().build();
+            }
+
+            NameAssignment assignment = new NameAssignment(phoneNumber, assignedName, assignedBy);
+            nameAssignmentDao.save(assignment);
+
+            response.put("status", "success");
+            response.put("message", "Nombre sugerido guardado");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("status", "error");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(500).body(response);
         }
     }
 }
