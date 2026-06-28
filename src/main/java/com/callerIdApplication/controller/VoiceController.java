@@ -8,6 +8,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/voice")
+@CrossOrigin(origins = "*") // 🔥 ESTO EVITA EL ERROR DE CONEXIÓN
 public class VoiceController {
 
     @PostMapping("/analyze")
@@ -15,35 +16,41 @@ public class VoiceController {
         Map<String, Object> response = new HashMap<>();
         try {
             String audioBase64 = payload.get("audio");
+            if (audioBase64 == null) {
+                response.put("status", "error");
+                return ResponseEntity.badRequest().body(response);
+            }
+            
             byte[] audioData = Base64.getDecoder().decode(audioBase64);
 
-            // 🧠 MOTOR DE DETECCIÓN VELO IA v1.0
-            // Analizamos la "firma digital" del audio
+            // 🧠 MOTOR DE DETECCIÓN VELO IA v1.1
             boolean isSynthetic = detectAiArtifacts(audioData);
 
             response.put("status", "success");
             response.put("isAi", isSynthetic);
-            response.put("confidence", isSynthetic ? 0.92 : 0.98);
-            response.put("verdict", isSynthetic ? "ALERTA IA: Voz Clonada Detectada" : "HUMANO: Voz Orgánica Verificada");
+            response.put("verdict", isSynthetic ? "ALERTA IA: Voz Sintética" : "HUMANO: Voz Orgánica");
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             response.put("status", "error");
+            response.put("message", e.getMessage());
             return ResponseEntity.status(500).body(response);
         }
     }
 
     private boolean detectAiArtifacts(byte[] data) {
-        // Lógica de detección: Las IAs de clonación suelen tener una 
-        // "perfección de frecuencia" que no existe en la laringe humana.
-        // Aquí buscamos picos de amplitud constantes y falta de micro-pausas.
-        if (data.length < 100) return false;
+        if (data.length < 1000) return false;
         
-        int spikes = 0;
-        for (int i = 0; i < data.length - 1; i++) {
-            if (Math.abs(data[i] - data[i+1]) > 120) spikes++;
+        // Buscamos patrones de repetición matemática que las IAs 
+        // de clonación suelen dejar en los paquetes de datos
+        int identicalMatches = 0;
+        for (int i = 0; i < data.length - 10; i++) {
+            if (data[i] == data[i+1] && data[i] == data[i+2]) {
+                identicalMatches++;
+            }
         }
-        // Si el audio es "demasiado ruidoso" o "demasiado plano", es sospechoso
-        return spikes < (data.length * 0.05); 
+        // Un audio humano tiene mucho ruido "sucio" (aleatorio), 
+        // una IA tiene patrones mucho más limpios y repetitivos.
+        return identicalMatches > (data.length * 0.15); 
     }
 }
